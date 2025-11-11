@@ -1,10 +1,11 @@
+
 // -------------------------------------------
-// Mini E-Commerce Store with Login & Signup
-// Single-file full app using Node + Express
+// Mini E-Commerce Store with Login & Signup (Fixed + Persistent Users)
 // -------------------------------------------
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const fs = require("fs");
 const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -12,10 +13,31 @@ const PORT = process.env.PORT || 4000;
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// File for saving users permanently
+const USERS_FILE = path.join(__dirname, "users.json");
+
+// Load users from file
+function loadUsers() {
+  if (fs.existsSync(USERS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(USERS_FILE, "utf-8"));
+    } catch (e) {
+      console.error("Error reading users.json:", e);
+      return [];
+    }
+  }
+  return [];
+}
+
+// Save users to file
+function saveUsers() {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
 // -------------------------------------------
-// In-memory Data (for demo only)
+// In-memory Data
 // -------------------------------------------
-let users = []; // { username, password }
+let users = loadUsers(); // { username, password }
 let sessions = {}; // sessionId → username
 let products = [
   { id: 1, name: "T-Shirt", price: 499, stock: 10 },
@@ -42,9 +64,12 @@ app.post("/api/signup", (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
     return res.status(400).json({ error: "Missing username or password" });
+
   if (users.find((u) => u.username === username))
     return res.status(400).json({ error: "User already exists" });
+
   users.push({ username, password });
+  saveUsers();
   return res.json({ success: true, message: "Signup successful!" });
 });
 
